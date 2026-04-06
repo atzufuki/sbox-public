@@ -37,6 +37,7 @@
 !*.cfg
 !*.json
 !*.css
+!*.scss
 !.editorconfig
 !.yaml
 !.yml
@@ -101,3 +102,4 @@ engine/TestResults/
 /game/tools
 /game/aftermath_dumps
 /game/gamecache
+/game/**/Transients/

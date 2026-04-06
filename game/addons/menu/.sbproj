@@ -10,6 +10,7 @@
   "EditorReferences": null,
   "Mounts": null,
   "IsStandaloneOnly": true,
+  "CodePath": "code",
   "Metadata": {
     "Compiler": {
       "RootNamespace": "MenuProject",

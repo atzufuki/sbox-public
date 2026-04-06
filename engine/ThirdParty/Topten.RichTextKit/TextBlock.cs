@@ -1339,6 +1339,20 @@ namespace Topten.RichTextKit
 			// Get the typeface
 			var typeface = TypefaceFromStyle( style );
 
+			// On Linux SKTypeface.FromFamilyName() and SKTypeface.Default can both
+			// return null when no system fonts are available.  SKFont(null) throws
+			// inside GetFontRuns, producing a misleading "font run count 0" error.
+			// Use the SkiaSharp built-in fallback as a last resort.
+			// CA2000 suppressed: typeface lifetime is managed by the font run system.
+#pragma warning disable CA2000
+			if ( typeface == null )
+				typeface = SKTypeface.CreateDefault();
+#pragma warning restore CA2000
+
+			// If still null, skip this run to avoid crashing.
+			if ( typeface == null )
+				return;
+
 			// Get the slice of code points
 			var codePointsSlice = _codePoints.SubSlice( start, length );
 

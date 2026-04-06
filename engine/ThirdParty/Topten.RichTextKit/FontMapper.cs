@@ -48,13 +48,16 @@ namespace Topten.RichTextKit
 				extraWeight += 100;
 			}
 
-			// Get the typeface
+			// Get the typeface.
+			// SKTypeface.FromFamilyName can return null on Linux when the requested
+			// family is not installed as a system font.  SKFont(null) throws, so we
+			// must never return null from here – fall back to the built-in default.
 			return SKTypeface.FromFamilyName(
 				style.FontFamily,
 				(SKFontStyleWeight)(style.FontWeight + extraWeight),
 				0,
 				style.FontItalic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright
-				) ?? SKTypeface.CreateDefault();
+				) ?? SKTypeface.Default ?? SKTypeface.CreateDefault();
 		}
 
 		/// <summary>

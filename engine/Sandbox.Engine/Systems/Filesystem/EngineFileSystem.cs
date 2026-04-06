@@ -161,6 +161,16 @@ internal static class EngineFileSystem
 	internal static void AddAssetPath( string ident, string path )
 	{
 		Mounted.Mount( new LocalFileSystem( path ) );
-		NativeEngine.FullFileSystem.AddProjectPath( "xxx", path );
+		NativeEngine.FullFileSystem.AddProjectPath( ident, path );
+	}
+
+	/// <summary>
+	/// Initialize the ProjectSettings filesystem from an absolute folder path.
+	/// Used by DevAppSystem to set up project settings without editor tools.
+	/// </summary>
+	internal static void InitializeProjectSettingsFolder( string absolutePath )
+	{
+		System.IO.Directory.CreateDirectory( absolutePath );
+		ProjectSettings = new LocalFileSystem( absolutePath );
 	}
 }

@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
+using System.Threading.Tasks;
 
 namespace Sandbox;
 
@@ -16,6 +17,12 @@ public class AppSystem
 {
 	protected Logger log = new Logger( "AppSystem" );
 	internal CMaterialSystem2AppSystemDict _appSystem { get; set; }
+
+	/// <summary>
+	/// Called from Bootstrap.Init() when no IToolsDll is present, to load and launch the game project.
+	/// Override in subclasses to provide custom project loading logic.
+	/// </summary>
+	public virtual Task LoadProject() => Task.CompletedTask;
 
 	[DllImport( "user32.dll", CharSet = CharSet.Unicode )]
 	private static extern int MessageBox( IntPtr hWnd, string text, string caption, uint type );
@@ -89,6 +96,10 @@ public class AppSystem
 
 	public void Run()
 	{
+		// Register this instance's LoadProject as the Bootstrap hook,
+		// so Bootstrap.Init() can call it when no IToolsDll is present.
+		Engine.Bootstrap.LoadProjectHook = LoadProject;
+
 		try
 		{
 			SetupEnvironment();

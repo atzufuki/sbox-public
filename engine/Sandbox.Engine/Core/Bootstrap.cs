@@ -23,6 +23,12 @@ internal static class Bootstrap
 	internal static Api.Events.EventRecord StartupTiming;
 
 	/// <summary>
+	/// Optional hook set by the launcher (e.g. DevAppSystem) to load a game project
+	/// without requiring editor tools. Called from Init() when IToolsDll is not present.
+	/// </summary>
+	internal static Func<Task> LoadProjectHook { get; set; }
+
+	/// <summary>
 	/// Called before anything else. This should set up any low level stuff that
 	/// might be relied on if static functions are called.
 	/// </summary>
@@ -228,6 +234,11 @@ internal static class Bootstrap
 			{
 				using var x = StartupTiming?.ScopeTimer( $"Load Project" );
 				SyncContext.RunBlocking( IToolsDll.Current.LoadProject() );
+			}
+			else if ( LoadProjectHook is not null )
+			{
+				using var x = StartupTiming?.ScopeTimer( $"Load Project (DevAppSystem)" );
+				SyncContext.RunBlocking( LoadProjectHook() );
 			}
 
 			if ( !Application.IsHeadless )

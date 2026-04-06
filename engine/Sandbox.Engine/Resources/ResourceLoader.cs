@@ -31,6 +31,11 @@ internal static class ResourceLoader
 		var types = Game.TypeLibrary.GetAttributes<AssetTypeAttribute>().DistinctBy( x => x.Extension )
 			.ToDictionary( x => $".{x.Extension}_c", x => x, StringComparer.OrdinalIgnoreCase );
 
+		// Also build a map from raw source extension (e.g. ".scene") to its type attribute,
+		// used as a fallback when no compiled _c file is present (dev / no-asset-compiler mode).
+		var sourceTypes = Game.TypeLibrary.GetAttributes<AssetTypeAttribute>().DistinctBy( x => x.Extension )
+			.ToDictionary( x => $".{x.Extension}", x => x, StringComparer.OrdinalIgnoreCase );
+
 		var allFiles = fileSystem.FindFile( "/", "*", true ).ToArray();
 
 		// Union GameResource extensions with native-only ones so PathIndex covers everything.
@@ -38,6 +43,9 @@ internal static class ResourceLoader
 		allExtensions.UnionWith( NativeExtensions );
 
 		RegisterPaths( allFiles, allExtensions );
+
+		// Track which paths (without _c) were already loaded so the raw-JSON fallback can skip them.
+		var loadedPaths = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
 
 		var allResources = new List<GameResource>();
 
@@ -56,11 +64,60 @@ internal static class ResourceLoader
 			try
 			{
 				var se = Game.Resources.LoadGameResource( type, file, fileSystem, true );
-				if ( se != null ) allResources.Add( se );
+				if ( se != null )
+				{
+					allResources.Add( se );
+					// Mark the source path (without _c) as already loaded.
+					loadedPaths.Add( file.EndsWith( "_c", System.StringComparison.OrdinalIgnoreCase )
+						? file[..^2]
+						: file );
+				}
 			}
 			catch ( Exception ex )
 			{
 				Log.Warning( ex, $"Exception when trying to load {file}" );
+			}
+		}
+
+		// Fallback pass: load raw JSON source files (e.g. .scene, .gameresource) for which
+		// no compiled _c version was found. This supports dev mode without an asset compiler.
+		foreach ( var file in allFiles )
+		{
+			var extension = System.IO.Path.GetExtension( file );
+
+			if ( !sourceTypes.TryGetValue( extension, out var type ) )
+				continue;
+
+			// Skip if the compiled version was already loaded above.
+			if ( loadedPaths.Contains( file ) )
+				continue;
+
+			// Skip if already in ResourceLibrary.
+			var cleanFile = file.Trim( '/' );
+			if ( ResourceLibrary.TryGet<GameResource>( cleanFile, out var existing ) && !existing.IsPromise )
+				continue;
+
+			// Only load if there's no corresponding _c file in the filesystem.
+			var compiledFile = file + "_c";
+			if ( fileSystem.FileExists( compiledFile ) )
+				continue;
+
+			try
+			{
+				var json = fileSystem.ReadAllText( file );
+				if ( string.IsNullOrEmpty( json ) )
+					continue;
+
+				var se = GameResource.GetPromise( type.TargetType, cleanFile );
+				if ( se is null )
+					continue;
+
+				se.LoadFromJson( json );
+				allResources.Add( se );
+			}
+			catch ( Exception ex )
+			{
+				Log.Warning( ex, $"Exception when loading raw source resource {file}" );
 			}
 		}
 

@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 namespace Sandbox;
 
 /// <summary>
@@ -49,5 +51,69 @@ public class DevAppSystem : AppSystem
 
 		NativeEngine.EngineGlobal.Plat_MessageBox( "Couldn't open project", $"Couldn't open project file: {path}" );
 		return false;
+	}
+
+	/// <summary>
+	/// Loads the -project argument as the active game project, compiles its code,
+	/// and launches the game — without requiring any editor tools.
+	/// Called from Bootstrap.Init() when no IToolsDll is present.
+	/// </summary>
+	public override async Task LoadProject()
+	{
+		if ( Utility.CommandLine.HasSwitch( "-test" ) && !Utility.CommandLine.HasSwitch( "-project" ) )
+			return;
+
+		var path = Utility.CommandLine.GetSwitch( "-project", "" ).TrimQuoted();
+		if ( string.IsNullOrWhiteSpace( path ) )
+		{
+			log.Warning( "[DevAppSystem] No -project argument provided, skipping project load." );
+			return;
+		}
+
+		log.Info( $"[DevAppSystem] Loading project: {path}" );
+
+		// Add the project to the global list and set it as Current
+		var project = Project.AddFromFile( path );
+		if ( project is null || project.Broken )
+		{
+			NativeEngine.EngineGlobal.Plat_MessageBox( "Project load failed", $"Failed to load project: {path}" );
+			return;
+		}
+
+		Project.Current = project;
+		Project.Current.LastOpened = System.DateTime.Now;
+		project.Active = true;
+
+		// Register the project's assets folder with the native filesystem
+		var assetsPath = project.GetAssetsPath();
+		if ( System.IO.Directory.Exists( assetsPath ) )
+		{
+			EngineFileSystem.AddAssetPath( project.Config.FullIdent, assetsPath );
+			log.Info( $"[DevAppSystem] Mounted assets: {assetsPath}" );
+		}
+
+		// Initialize ProjectSettings filesystem (needed by Input.config etc.)
+		var projectSettingsFolder = System.IO.Path.Combine( project.GetRootPath(), "ProjectSettings" );
+		EngineFileSystem.InitializeProjectSettingsFolder( projectSettingsFolder );
+
+		// Sync project with the package manager so the mock package is registered
+		await Project.SyncWithPackageManager();
+
+		// Compile the project's C# code
+		log.Info( "[DevAppSystem] Compiling project code..." );
+		var compiled = await Project.CompileAsync();
+		if ( !compiled )
+		{
+			log.Warning( "[DevAppSystem] Compilation failed — launching anyway with last known assembly." );
+		}
+		else
+		{
+			log.Info( "[DevAppSystem] Compilation succeeded." );
+		}
+
+		// Launch the game
+		var ident = project.Package.FullIdent;
+		log.Info( $"[DevAppSystem] Launching game package: {ident}" );
+		await Engine.IGameInstanceDll.Current.LoadGamePackageAsync( ident, Engine.GameLoadingFlags.Host, default );
 	}
 }

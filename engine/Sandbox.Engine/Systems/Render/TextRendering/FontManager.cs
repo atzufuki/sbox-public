@@ -54,10 +54,40 @@ internal class FontManager : FontMapper
 		var fontFiles = fileSystem.FindFile( "/fonts/", "*.ttf", true )
 			.Union( fileSystem.FindFile( "/fonts/", "*.otf", true ) );
 
+		int count = 0;
 		Parallel.ForEach( fontFiles, ( string font ) =>
 		{
 			Load( fileSystem.OpenRead( $"/fonts/{font}" ) );
+			System.Threading.Interlocked.Increment( ref count );
 		} );
+
+		Log.Info( $"FontManager.LoadAll: loaded {count} fonts from VFS /fonts/" );
+
+		// On Linux without the editor the VFS sub-filesystem for base assets is
+		// mounted at the root of FileSystem.Mounted, but FindFile("/fonts/") may
+		// still return nothing if the aggregate hasn't resolved paths yet, or if
+		// there are no system fonts registered.  Fall back to loading directly
+		// from disk so text never crashes with a null typeface stream.
+		if ( count == 0 )
+		{
+			var engineDir = System.IO.Path.GetDirectoryName( typeof( FontManager ).Assembly.Location );
+			// Walk up from bin/managed/ to game/ to find addons/base/assets/fonts/
+			var gameDir = engineDir;
+			for ( int i = 0; i < 3; i++ )
+				gameDir = System.IO.Path.GetDirectoryName( gameDir );
+			var diskFontsDir = System.IO.Path.Combine( gameDir ?? "", "addons", "base", "assets", "fonts" );
+			Log.Info( $"FontManager.LoadAll: VFS found no fonts, trying disk path: {diskFontsDir}" );
+			if ( System.IO.Directory.Exists( diskFontsDir ) )
+			{
+				foreach ( var file in System.IO.Directory.EnumerateFiles( diskFontsDir, "*.ttf" )
+					.Union( System.IO.Directory.EnumerateFiles( diskFontsDir, "*.otf" ) ) )
+				{
+					Load( System.IO.File.OpenRead( file ) );
+					count++;
+				}
+				Log.Info( $"FontManager.LoadAll: loaded {count} fonts from disk fallback" );
+			}
+		}
 
 		// Load any new fonts
 		var ttfWatch = fileSystem.Watch( $"*.ttf" );

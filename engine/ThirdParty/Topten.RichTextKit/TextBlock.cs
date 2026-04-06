@@ -1209,7 +1209,7 @@ namespace Topten.RichTextKit
 			}
 			catch ( Exception x )
 			{
-				throw new InvalidOperationException( $"Exception in BuildFontRuns() with original length of {originalLength} now {_codePoints.Length}, style run count {_styleRuns.Count}, font run count {_fontRuns.Count}, direction overrides: {_hasTextDirectionOverrides}", x );
+				throw new InvalidOperationException( $"Exception in BuildFontRuns() with original length of {originalLength} now {_codePoints.Length}, style run count {_styleRuns.Count}, font run count {_fontRuns.Count}, direction overrides: {_hasTextDirectionOverrides}: {x.GetType().Name}: {x.Message}", x );
 			}
 		}
 

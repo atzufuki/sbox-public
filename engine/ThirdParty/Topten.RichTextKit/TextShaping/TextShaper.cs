@@ -59,9 +59,29 @@ namespace Topten.RichTextKit
 			// Store typeface
 			_typeface = typeface;
 
-			// Load the typeface stream to a HarfBuzz font
+			// Load the typeface stream to a HarfBuzz font.
+			// On Linux, SKTypeface.Default / SKTypeface.CreateDefault() may return a
+			// typeface whose OpenStream() returns null (no backing font data), which
+			// would crash GetHarfBuzzBlob.  Fall back to an empty HarfBuzz font so
+			// text rendering degrades gracefully instead of throwing.
 			int index;
-			using ( var blob = GetHarfBuzzBlob( typeface.OpenStream( out index ) ) )
+			var stream = typeface.OpenStream( out index );
+			if ( stream == null )
+			{
+				using ( var face = new Face( Blob.Empty, 0 ) )
+				{
+					_font = new HarfBuzzSharp.Font( face );
+					_font.SetScale( overScale, overScale );
+					_font.SetFunctionsOpenType();
+				}
+				using ( var font = new SKFont() )
+				{
+					font.Size = overScale;
+					_fontMetrics = font.Metrics;
+				}
+				return;
+			}
+			using ( var blob = GetHarfBuzzBlob( stream ) )
 			using ( var face = new Face( blob, (uint)index ) )
 			{
 				face.UnitsPerEm = typeface.UnitsPerEm;

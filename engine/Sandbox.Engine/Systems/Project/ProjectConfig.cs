@@ -82,6 +82,12 @@ public class ProjectConfig
 	public bool IncludeSourceFiles { get; set; }
 
 	/// <summary>
+	/// The subdirectory name for source code, relative to the project root. Defaults to "Code".
+	/// </summary>
+	[Hide]
+	public string CodePath { get; set; }
+
+	/// <summary>
 	/// A list of paths in which to look for extra assets to upload with the addon. Note that compiled asset files are automatically included.
 	/// </summary>
 	public string Resources { get; set; }

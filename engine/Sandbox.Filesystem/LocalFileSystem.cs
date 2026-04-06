@@ -11,7 +11,9 @@ internal class LocalFileSystem : BaseFileSystem
 	{
 		Physical = new Zio.FileSystems.PhysicalFileSystem();
 
-		var rootPath = Physical.ConvertPathFromInternal( rootFolder.ToLowerInvariant() );
+		// On Linux, paths are case-sensitive — do NOT lowercase them.
+		var normalizedFolder = OperatingSystem.IsLinux() ? rootFolder : rootFolder.ToLowerInvariant();
+		var rootPath = Physical.ConvertPathFromInternal( normalizedFolder );
 		system = new Zio.FileSystems.SubFileSystem( Physical, rootPath );
 
 		if ( makereadonly )

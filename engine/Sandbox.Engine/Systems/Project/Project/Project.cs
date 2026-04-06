@@ -177,8 +177,16 @@ public sealed partial class Project
 
 	/// <summary>
 	/// Absolute path to the Code folder of the project.
+	/// Uses <see cref="Sandbox.DataModel.ProjectConfig.CodePath"/> from the .sbproj if set, otherwise defaults to "Code".
 	/// </summary>
-	public string GetCodePath() => System.IO.Path.Combine( RootDirectory.FullName, "Code" );
+	public string GetCodePath()
+	{
+		var sub = !string.IsNullOrWhiteSpace( Config?.CodePath )
+			? Config.CodePath.TrimStart( System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar )
+			: "Code";
+		if ( string.IsNullOrWhiteSpace( sub ) ) sub = "Code";
+		return System.IO.Path.Combine( RootDirectory.FullName, sub );
+	}
 
 	/// <summary>
 	/// Returns true if the Code path exists

@@ -22,17 +22,25 @@ public static class Launcher
 
 		if ( !HasCommandLineSwitch( "-project" ) && !HasCommandLineSwitch( "-test" ) )
 		{
-			// we pass the command line, so we can pass it on to the sbox-launcher (for -game etc)
-			ProcessStartInfo info = new ProcessStartInfo( "sbox-launcher.exe", Environment.CommandLine );
-			info.UseShellExecute = true;
-			info.CreateNoWindow = true;
-			info.WorkingDirectory = System.Environment.CurrentDirectory;
+			if ( OperatingSystem.IsWindows() )
+			{
+				// we pass the command line, so we can pass it on to the sbox-launcher (for -game etc)
+				ProcessStartInfo info = new ProcessStartInfo( "sbox-launcher.exe", Environment.CommandLine );
+				info.UseShellExecute = true;
+				info.CreateNoWindow = true;
+				info.WorkingDirectory = System.Environment.CurrentDirectory;
 
-			Process.Start( info );
+				Process.Start( info );
+			}
+
 			return 0;
 		}
 
-		var appSystem = new EditorAppSystem();
+		// On Linux, editor-native libraries (libtoolframework2.so etc.) are not publicly
+		// distributed. Use DevAppSystem which skips CreateEditor() to avoid the dependency.
+		// The -no-editor flag forces this mode on any platform.
+		var noEditor = HasCommandLineSwitch( "-no-editor" ) || OperatingSystem.IsLinux();
+		AppSystem appSystem = noEditor ? new DevAppSystem() : new EditorAppSystem();
 		appSystem.Run();
 
 		return 0;

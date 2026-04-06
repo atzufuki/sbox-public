@@ -20,7 +20,11 @@
 		Managed.SandboxEngine.NativeInterop.Initialize();
 
 		// set engine paths etc
-		NativeEngine.EngineGlobal.Plat_SetModuleFilename( $"{gameFolder}\\sbox.exe" );
+		// On Linux, the engine executable is sbox-dev (no .exe), and dlopen uses the module
+		// filename to compute sibling native library paths — so use the correct platform name.
+		string exeName = OperatingSystem.IsWindows() ? "sbox.exe" : "sbox-dev";
+		string sep = System.IO.Path.DirectorySeparatorChar.ToString();
+		NativeEngine.EngineGlobal.Plat_SetModuleFilename( $"{gameFolder}{sep}{exeName}" );
 		NativeEngine.EngineGlobal.Plat_SetCurrentDirectory( $"{gameFolder}" );
 	}
 }

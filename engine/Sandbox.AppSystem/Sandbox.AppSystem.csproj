@@ -24,7 +24,13 @@
   <ItemGroup>
     <ProjectReference Include="..\Sandbox.GameInstance\Sandbox.GameInstance.csproj" />
     <ProjectReference Include="..\Sandbox.Menu\Sandbox.Menu.csproj" />
-    <ProjectReference Include="..\Sandbox.Tools\Sandbox.Tools.csproj" />
+    <!-- Sandbox.Tools is only needed at compile time (EditorAppSystem.CreateEditor calls
+         Editor.AssemblyInitialize.Initialize which lives there). At runtime the assembly
+         is loaded lazily via AppDomain.AssemblyResolve only when the editor is requested.
+         Private="false" / ExcludeAssets="runtime" prevents it from being treated as a
+         mandatory runtime dependency, which would otherwise trigger libtoolframework2.so
+         loading on Linux where that native library is not distributed. -->
+    <ProjectReference Include="..\Sandbox.Tools\Sandbox.Tools.csproj" Private="false" ExcludeAssets="runtime" />
   </ItemGroup>
 
   

@@ -31,7 +31,14 @@
 		<ProjectReference Include="..\..\Sandbox.AppSystem\Sandbox.AppSystem.csproj" Private="false"/>
 		<ProjectReference Include="..\..\Sandbox.Engine\Sandbox.Engine.csproj"  Private="false"/>
 		<ProjectReference Include="..\..\Sandbox.GameInstance\Sandbox.GameInstance.csproj" Private="false" />
-		<ProjectReference Include="..\..\Sandbox.Tools\Sandbox.Tools.csproj" Private="false" />
+		<!-- Sandbox.Tools is not a direct dependency of sbox-dev: it is loaded on-demand
+		     by EditorAppSystem.CreateEditor() via AssemblyInitialize.Initialize().
+		     Keeping it as a compile-time reference causes .NET to load the assembly on
+		     startup, which in turn triggers libtoolframework2.so — a native library that
+		     is not publicly distributed for Linux. Remove the reference so the assembly
+		     is only resolved through AppDomain.AssemblyResolve when the editor is actually
+		     requested (i.e. on Windows / with the full editor install). -->
+		<!-- <ProjectReference Include="..\..\Sandbox.Tools\Sandbox.Tools.csproj" Private="false" /> -->
 	</ItemGroup>
 
 	<Import Project="..\Shared\LaunchShared.projitems" Label="Shared" />

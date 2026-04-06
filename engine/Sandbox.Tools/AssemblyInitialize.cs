@@ -23,6 +23,12 @@ internal static class AssemblyInitialize
 {
 	public static void Initialize()
 	{
+		// On Linux the editor-native .so files (libtoolframework2.so etc.) are not
+		// publicly distributed. Skip native initialisation entirely; the editor will
+		// simply not be available, which is expected when running with -no-editor.
+		if ( System.OperatingSystem.IsLinux() )
+			return;
+
 		Managed.SourceTools.NativeInterop.Initialize();
 		Managed.SourceAssetSytem.NativeInterop.Initialize();
 		Managed.SourceHammer.NativeInterop.Initialize();

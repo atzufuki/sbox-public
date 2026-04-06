@@ -113,6 +113,10 @@ internal class FontManager : FontMapper
 		// Fallback on system font
 		f ??= Default.TypefaceFromStyle( style, ignoreFontVariants );
 
+		// Last resort: use SkiaSharp's built-in default typeface.
+		// SKFont(null) throws, so we must never return null from here.
+		f ??= SKTypeface.Default;
+
 		lock ( Cache )
 		{
 			Cache[hash] = f;

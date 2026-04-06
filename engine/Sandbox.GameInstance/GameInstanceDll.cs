@@ -498,6 +498,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 			mouseIsAllowed = !IMenuDll.Current.HasOverlayMouseInput();
 		}
 
+		using ( GlobalContext.GameScope() )
 		using ( Game.ActiveScene?.Push() )
 		{
 			Game.Language?.Tick();

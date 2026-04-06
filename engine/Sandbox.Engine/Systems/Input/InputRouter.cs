@@ -1,6 +1,7 @@
 ﻿using NativeEngine;
 using Sandbox.Internal;
 using Sandbox.UI;
+using System.Runtime.InteropServices;
 
 namespace Sandbox.Engine;
 
@@ -11,6 +12,13 @@ namespace Sandbox.Engine;
 /// </summary>
 internal static partial class InputRouter
 {
+	/// <summary>
+	/// SDL3: get current mouse position relative to the focused window.
+	/// Returns the current button mask.
+	/// </summary>
+	[DllImport( "libengine2.so" )]
+	static extern uint SDL_GetMouseState( out float x, out float y );
+
 	/// <summary>
 	/// True if the cursor is visible
 	/// </summary>
@@ -99,6 +107,22 @@ internal static partial class InputRouter
 		// or from a Panel.CaptureMode - in which case input is sent to the panel/ui
 		bool mouseCaptureMode = activeMouse is not null && activeMouse.MouseState == InputContext.InputState.Game;
 		mouseCaptureMode = mouseCaptureMode || (activeMouse?.MouseCapture ?? false);
+
+		// On Wayland, SDL motion events may never arrive, so poll the mouse position directly every frame.
+		if ( !mouseCaptureMode && !NativeEngine.InputSystem.GetRelativeMouseMode() )
+		{
+			SDL_GetMouseState( out float sdlX, out float sdlY );
+			var polledPos = new Vector2( sdlX, sdlY );
+			if ( polledPos != MouseCursorPosition )
+			{
+				var delta = polledPos - MouseCursorPosition;
+				MouseCursorPosition = polledPos;
+				MouseCursorDelta += delta;
+
+				var mouse = Contexts.FirstOrDefault( x => x.MouseState != InputContext.InputState.Ignore );
+				mouse?.In_MousePosition( MouseCursorPosition, delta );
+			}
+		}
 
 		MouseCursorVisible = !mouseCaptureMode && (activeMouse is not null && activeMouse.MouseState == InputContext.InputState.UI);
 		if ( !InputSystem.HasMouseFocus() ) MouseCursorVisible = true;

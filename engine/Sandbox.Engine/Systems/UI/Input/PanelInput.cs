@@ -262,10 +262,14 @@ internal class PanelInput
 		bool found = false;
 
 		if ( !panel.IsVisible )
+		{
 			return false;
+		}
 
 		if ( panel.ComputedStyle == null )
+		{
 			return false;
+		}
 
 		//
 		// Transform using this panel's local matrix

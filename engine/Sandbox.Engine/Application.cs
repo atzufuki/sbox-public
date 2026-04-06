@@ -181,7 +181,7 @@ public static class Application
 	/// <summary>
 	/// Exits the application if we're running in standalone mode or we are a Dedicated Server.
 	/// </summary>
-	internal static void Exit()
+	public static void Exit()
 	{
 		WantsExit = true;
 	}

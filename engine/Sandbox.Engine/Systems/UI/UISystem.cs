@@ -222,9 +222,42 @@ internal class UISystem
 		}
 
 		//
+		// Pre-compute mouse/button state so that AddMouseButton (called from native this frame)
+		// already sees the correct MouseState before Input.Tick dispatches events.
+		//
+		bool inGame = IGameInstance.Current is not null;
+		bool inGameWantsMouseInput = inGame && DoAnyPanelsWantMouseVisible();
+
+		if ( inGameWantsMouseInput )
+		{
+			var preMouseState = InputContext.InputState.UI;
+			var preButtonState = InputContext.InputState.UI;
+			if ( CurrentFocus is not null )
+				preButtonState = CurrentFocus.ButtonInput == PanelInputType.Game ? InputContext.InputState.Game : InputContext.InputState.UI;
+			Game.InputContext.UpdateInputFromUI( preMouseState, Input.Hovered, Panel.MouseCapture is not null, preButtonState, CurrentFocus );
+		}
+
+		//
 		// Tick various input systems
 		//
-		Input.Tick( RootPanels.Where( p => !p.IsWorldPanel ).OrderByDescending( x => x.ComputedStyle?.ZIndex ?? 0 ), allowMouseInput && DoAnyPanelsWantMouseVisible() );
+		Input.Tick( RootPanels.Where( p => !p.IsWorldPanel ).OrderByDescending( x => x.ComputedStyle?.ZIndex ?? 0 ), (allowMouseInput || inGameWantsMouseInput) && DoAnyPanelsWantMouseVisible() );
+
+		//
+		// If we're in-game and the game UI wants mouse, tick the Game-UISystem's panels too
+		// so that hover detection works for panels registered there (e.g. MainMenu via ScreenPanel).
+		//
+		var gameUISystem = GlobalContext.Game?.UISystem;
+		if ( inGameWantsMouseInput && gameUISystem != null && gameUISystem != this )
+		{
+			if ( Input.Hovered is null )
+			{
+				var gamePanels = gameUISystem.RootPanels.Where( p => !p.IsWorldPanel ).ToList();
+				gameUISystem.Input.Tick(
+					gamePanels.OrderByDescending( x => x.ComputedStyle?.ZIndex ?? 0 ),
+					true
+				);
+			}
+		}
 
 		TickWorldInput();
 
@@ -252,8 +285,7 @@ internal class UISystem
 		//
 		Mouse.Frame();
 
-		bool inGame = IGameInstance.Current is not null;
-
+		// inGame already computed above
 		var mouseState = Sandbox.Engine.InputContext.InputState.Ignore;
 		var buttonState = Sandbox.Engine.InputContext.InputState.Ignore;
 
@@ -263,6 +295,18 @@ internal class UISystem
 			{
 				mouseState = InputContext.InputState.UI;
 				buttonState = Sandbox.Engine.InputContext.InputState.Game;
+
+				if ( CurrentFocus is not null )
+					buttonState = CurrentFocus.ButtonInput == PanelInputType.Game ? InputContext.InputState.Game : InputContext.InputState.UI;
+			}
+
+			//
+			// Game is running but explicitly requested mouse visibility (e.g. game UI menus)
+			//
+			if ( inGame && DoAnyPanelsWantMouseVisible() )
+			{
+				mouseState = InputContext.InputState.UI;
+				buttonState = InputContext.InputState.UI;
 
 				if ( CurrentFocus is not null )
 					buttonState = CurrentFocus.ButtonInput == PanelInputType.Game ? InputContext.InputState.Game : InputContext.InputState.UI;
@@ -327,7 +371,15 @@ internal class UISystem
 			}
 		}
 
-		Game.InputContext.UpdateInputFromUI( mouseState, Input.Hovered, Panel.MouseCapture is not null, buttonState, CurrentFocus );
+		//
+		// Use Game-UISystem's hovered panel if it found one (Menu-UISystem didn't hover anything
+		// but Game-UISystem might have, e.g. MainMenu registered via ScreenPanel).
+		//
+		var effectiveHovered = (inGameWantsMouseInput && gameUISystem?.Input.Hovered is not null)
+			? gameUISystem.Input.Hovered
+			: Input.Hovered;
+
+		Game.InputContext.UpdateInputFromUI( mouseState, effectiveHovered, Panel.MouseCapture is not null, buttonState, CurrentFocus );
 	}
 
 	void TickWorldInput()

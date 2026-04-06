@@ -326,6 +326,14 @@ internal sealed class InputContext
 			}
 
 			TargetUISystem.Input.AddMouseButton( button, pressed, modifiers );
+
+			// If we're in the Menu context but the Game-UISystem has panels (e.g. MainMenu via ScreenPanel),
+			// forward the button event there too so @onclick handlers fire.
+			var gameUISystem = GlobalContext.Game?.UISystem;
+			if ( gameUISystem != null && gameUISystem != TargetUISystem )
+			{
+				gameUISystem.Input.AddMouseButton( button, pressed, modifiers );
+			}
 		}
 	}
 
